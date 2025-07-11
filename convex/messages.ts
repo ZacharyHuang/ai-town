@@ -11,7 +11,9 @@ export const listMessages = query({
   handler: async (ctx, args) => {
     const messages = await ctx.db
       .query('messages')
-      .withIndex('conversationId', (q) => q.eq('worldId', args.worldId).eq('conversationId', args.conversationId))
+      .withIndex('conversationId', (q) =>
+        q.eq('worldId', args.worldId).eq('conversationId', args.conversationId),
+      )
       .collect();
     const out = [];
     for (const message of messages) {
@@ -49,5 +51,59 @@ export const writeMessage = mutation({
       playerId: args.playerId,
       timestamp: Date.now(),
     });
+  },
+});
+
+// 导出相关的query函数
+
+// 获取所有玩家描述
+export const getAllPlayerDescriptions = query({
+  args: {
+    worldId: v.id('worlds'),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('playerDescriptions')
+      .withIndex('worldId', (q) => q.eq('worldId', args.worldId))
+      .collect();
+  },
+});
+
+// 获取所有消息(不限制数量，用于完整导出)
+export const getAllMessages = query({
+  args: {
+    worldId: v.id('worlds'),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('messages')
+      .filter((q) => q.eq(q.field('worldId'), args.worldId))
+      .collect();
+  },
+});
+
+// 获取所有memories(不限制数量，用于完整导出)
+export const getAllMemories = query({
+  args: {
+    worldId: v.id('worlds'),
+  },
+  handler: async (ctx, args) => {
+    // 首先获取该世界的所有玩家描述
+    const playerDescriptions = await ctx.db
+      .query('playerDescriptions')
+      .withIndex('worldId', (q) => q.eq('worldId', args.worldId))
+      .collect();
+
+    // 然后获取这些玩家的所有memories
+    const allMemories = [];
+    for (const playerDesc of playerDescriptions) {
+      const playerMemories = await ctx.db
+        .query('memories')
+        .withIndex('playerId', (q) => q.eq('playerId', playerDesc.playerId))
+        .collect();
+      allMemories.push(...playerMemories);
+    }
+
+    return allMemories;
   },
 });

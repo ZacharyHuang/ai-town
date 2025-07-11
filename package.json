@@ -12,7 +12,8 @@
     "dashboard": "convex dashboard",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose",
     "level-editor": "vite src/editor/",
-    "le": "vite src/editor/"
+    "le": "vite src/editor/",
+    "export-data": "node export-data.js"
   },
   "dependencies": {
     "@clerk/clerk-react": "^4.27.0",
@@ -22,6 +23,7 @@
     "@types/node": "20.2.5",
     "@types/react": "18.2.8",
     "@types/react-dom": "18.2.4",
+    "@types/react-router-dom": "^5.3.3",
     "clsx": "^2.0.0",
     "convex": "^1.19.2",
     "dotenv": "^16.1.4",
@@ -33,6 +35,7 @@
     "react-dom": "18.2.0",
     "react-github-btn": "^1.4.0",
     "react-modal": "^3.16.1",
+    "react-router-dom": "^7.6.3",
     "react-toastify": "^9.1.3",
     "replicate": "^0.18.0",
     "typescript": "5.1.3",

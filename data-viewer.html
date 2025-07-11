@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI Town Data Viewer</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+          'Cantarell', sans-serif;
+        background-color: #f5f6fa;
+        line-height: 1.6;
+      }
+
+      .app {
+        display: flex;
+        height: 100vh;
+      }
+
+      /* 侧边栏样式 */
+      .sidebar {
+        width: 280px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .sidebar h2 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 24px;
+        font-weight: 600;
+        text-align: center;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        padding-bottom: 15px;
+      }
+
+      .player-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .player-tab {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 15px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+      }
+
+      .player-tab:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+
+      .player-tab.active {
+        background: rgba(255, 255, 255, 0.3);
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+
+      .player-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .player-character {
+        font-size: 12px;
+        opacity: 0.8;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 2px 8px;
+        border-radius: 8px;
+        display: inline-block;
+      }
+
+      /* 主内容区域 */
+      .main-content {
+        flex: 1;
+        padding: 30px;
+        overflow-y: auto;
+        background-color: #ffffff;
+      }
+
+      /* 导航面包屑 */
+      .breadcrumb {
+        margin-bottom: 20px;
+        font-size: 14px;
+        color: #666;
+      }
+
+      .breadcrumb a {
+        color: #3498db;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .breadcrumb a:hover {
+        text-decoration: underline;
+      }
+
+      /* 返回按钮 */
+      .back-btn {
+        background: #3498db;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-bottom: 20px;
+        transition: background-color 0.3s ease;
+      }
+
+      .back-btn:hover {
+        background: #2980b9;
+      }
+
+      /* 主页样式 */
+      .home-page {
+        max-width: 800px;
+        margin: 0 auto;
+        text-align: center;
+      }
+
+      .home-page h1 {
+        font-size: 36px;
+        color: #2c3e50;
+        margin-bottom: 20px;
+        font-weight: 700;
+      }
+
+      .home-page p {
+        font-size: 18px;
+        color: #7f8c8d;
+        margin-bottom: 40px;
+      }
+
+      .data-summary {
+        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 20px;
+        text-align: left;
+        box-shadow: 0 10px 30px rgba(116, 185, 255, 0.3);
+      }
+
+      .data-summary h3 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+
+      .data-summary ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .data-summary li {
+        padding: 8px 0;
+        font-size: 16px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .data-summary li:last-child {
+        border-bottom: none;
+      }
+
+      /* 文件上传样式 */
+      .upload-section {
+        margin-bottom: 40px;
+      }
+
+      .upload-area {
+        border: 3px dashed #74b9ff;
+        border-radius: 20px;
+        padding: 50px 30px;
+        text-align: center;
+        background: #f8f9ff;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        margin-bottom: 20px;
+      }
+
+      .upload-area:hover {
+        border-color: #0984e3;
+        background: #e3f2fd;
+        transform: translateY(-2px);
+      }
+
+      .upload-area.dragover {
+        border-color: #00b894;
+        background: #e8f8f5;
+        transform: scale(1.02);
+      }
+
+      .upload-icon {
+        font-size: 48px;
+        margin-bottom: 15px;
+      }
+
+      .upload-area p {
+        font-size: 18px;
+        color: #74b9ff;
+        margin-bottom: 20px;
+      }
+
+      .upload-btn {
+        background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+      }
+
+      .upload-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(116, 185, 255, 0.4);
+      }
+
+      .upload-status {
+        text-align: center;
+        font-size: 16px;
+        margin-top: 15px;
+      }
+
+      .upload-status.success {
+        color: #00b894;
+        font-weight: 600;
+      }
+
+      .upload-status.error {
+        color: #e74c3c;
+        font-weight: 600;
+      }
+
+      .upload-status.loading {
+        color: #74b9ff;
+        font-weight: 600;
+      }
+
+      /* Player详情页面 */
+      .player-detail {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .player-header {
+        background: linear-gradient(135deg, #fd79a8 0%, #e84393 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 10px 30px rgba(232, 67, 147, 0.3);
+      }
+
+      .player-header h1 {
+        margin: 10px 0;
+        font-size: 32px;
+        font-weight: 700;
+      }
+
+      .player-description {
+        font-size: 16px;
+        line-height: 1.6;
+        opacity: 0.9;
+        margin: 15px 0 0 0;
+      }
+
+      .memory-sections {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+      }
+
+      .memory-section {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 25px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e9ecef;
+      }
+
+      .memory-section h2 {
+        margin-top: 0;
+        margin-bottom: 20px;
+        font-size: 22px;
+        color: #2c3e50;
+        border-bottom: 3px solid #3498db;
+        padding-bottom: 10px;
+      }
+
+      .memory-list {
+        max-height: 500px;
+        overflow-y: auto;
+      }
+
+      .memory-item {
+        background: #f8f9fa;
+        padding: 20px;
+        margin-bottom: 15px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 4px solid #3498db;
+      }
+
+      .memory-item:hover {
+        background: #e3f2fd;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(52, 152, 219, 0.2);
+      }
+
+      .memory-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+
+      .memory-time {
+        color: #7f8c8d;
+        font-weight: 500;
+      }
+
+      .memory-importance {
+        background: #3498db;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 8px;
+        font-weight: 600;
+      }
+
+      .memory-description {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #2c3e50;
+      }
+
+      /* 详情页面样式 */
+      .detail-header h1 {
+        color: #2c3e50;
+        font-size: 28px;
+        margin: 10px 0;
+        font-weight: 700;
+      }
+
+      .detail-content {
+        background: white;
+        padding: 30px;
+        border-radius: 16px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid #e9ecef;
+      }
+
+      .detail-info {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+      }
+
+      .info-row {
+        display: flex;
+        margin-bottom: 12px;
+        align-items: center;
+      }
+
+      .info-row:last-child {
+        margin-bottom: 0;
+      }
+
+      .info-row label {
+        font-weight: 600;
+        color: #2c3e50;
+        width: 120px;
+        margin-right: 15px;
+      }
+
+      .info-row span {
+        color: #34495e;
+        flex: 1;
+      }
+
+      .description-section {
+        margin-bottom: 30px;
+      }
+
+      .description-section h3 {
+        color: #2c3e50;
+        font-size: 20px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 8px;
+      }
+
+      .description-text {
+        font-size: 16px;
+        line-height: 1.8;
+        color: #2c3e50;
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 12px;
+        border-left: 4px solid #3498db;
+      }
+
+      /* 相关对话和消息样式 */
+      .related-conversations h3,
+      .messages-section h3 {
+        color: #2c3e50;
+        font-size: 20px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #e74c3c;
+        padding-bottom: 8px;
+      }
+
+      .conversation-list {
+        max-height: 400px;
+        overflow-y: auto;
+      }
+
+      .conversation-item {
+        background: #fff5f5;
+        padding: 15px;
+        margin-bottom: 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border-left: 4px solid #e74c3c;
+      }
+
+      .conversation-item:hover {
+        background: #ffe3e3;
+        transform: translateY(-1px);
+        box-shadow: 0 3px 10px rgba(231, 76, 60, 0.2);
+      }
+
+      .conversation-time {
+        font-size: 12px;
+        color: #7f8c8d;
+        margin-bottom: 8px;
+        font-weight: 500;
+      }
+
+      .conversation-preview {
+        font-size: 14px;
+        color: #2c3e50;
+        line-height: 1.4;
+      }
+
+      /* 消息样式 */
+      .messages-list {
+        max-height: 500px;
+        overflow-y: auto;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        background: #f8f9fa;
+      }
+
+      .message-item {
+        padding: 20px;
+        border-bottom: 1px solid #e9ecef;
+        background: white;
+        margin: 0;
+      }
+
+      .message-item:first-child {
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
+      }
+
+      .message-item:last-child {
+        border-bottom: none;
+        border-bottom-left-radius: 12px;
+        border-bottom-right-radius: 12px;
+      }
+
+      .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+      }
+
+      .message-author {
+        font-weight: 600;
+        color: #3498db;
+        font-size: 14px;
+      }
+
+      .message-time {
+        font-size: 12px;
+        color: #7f8c8d;
+      }
+
+      .message-text {
+        font-size: 15px;
+        line-height: 1.6;
+        color: #2c3e50;
+      }
+
+      /* 错误和加载状态 */
+      .error,
+      .loading {
+        text-align: center;
+        font-size: 18px;
+        padding: 40px;
+        border-radius: 12px;
+        margin: 20px;
+      }
+
+      .error {
+        color: #e74c3c;
+        background: #fff5f5;
+        border: 2px solid #e74c3c;
+      }
+
+      .loading {
+        color: #3498db;
+        background: #f0f8ff;
+        border: 2px solid #3498db;
+      }
+
+      /* 隐藏的页面 */
+      .page {
+        display: none;
+      }
+
+      .page.active {
+        display: block;
+      }
+
+      /* 响应式设计 */
+      @media (max-width: 768px) {
+        .app {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          height: auto;
+        }
+
+        .memory-sections {
+          grid-template-columns: 1fr;
+        }
+
+        .main-content {
+          padding: 20px;
+        }
+      }
+
+      /* 滚动条样式 */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="sidebar">
+        <h2>Players</h2>
+        <div id="playerList" class="player-list">
+          <!-- Players will be populated here -->
+        </div>
+      </div>
+
+      <div class="main-content">
+        <!-- 主页 -->
+        <div id="homePage" class="page active">
+          <div class="home-page">
+            <h1>AI Town Data Viewer</h1>
+            <p>Upload data.json file to view AI Town data</p>
+
+            <!-- 文件上传区域 -->
+            <div class="upload-section">
+              <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <p>Click or drag data.json file here</p>
+                <input type="file" id="fileInput" accept=".json" style="display: none" />
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                  Choose File
+                </button>
+              </div>
+              <div class="upload-status" id="uploadStatus"></div>
+            </div>
+
+            <div class="data-summary" id="dataSummaryContainer" style="display: none">
+              <h3>Data Summary</h3>
+              <ul id="dataSummary">
+                <!-- Data summary will be populated here -->
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Player详情页 -->
+        <div id="playerDetailPage" class="page">
+          <div class="player-detail">
+            <div class="breadcrumb">
+              <a onclick="showPage('homePage')">Home</a> > Player Details
+            </div>
+            <button class="back-btn" onclick="showPage('homePage')">← Back</button>
+            <div id="playerDetailContent">
+              <!-- Player detail content will be populated here -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Reflection详情页 -->
+        <div id="reflectionDetailPage" class="page">
+          <div class="detail-header">
+            <div class="breadcrumb">
+              <a onclick="showPage('homePage')">Home</a> >
+              <a onclick="goBackToPlayer()">Player Details</a> > Reflection Details
+            </div>
+            <button class="back-btn" onclick="goBackToPlayer()">← Back</button>
+            <h1>Reflection Details</h1>
+          </div>
+          <div id="reflectionDetailContent" class="detail-content">
+            <!-- Reflection detail content will be populated here -->
+          </div>
+        </div>
+
+        <!-- Conversation详情页 -->
+        <div id="conversationDetailPage" class="page">
+          <div class="detail-header">
+            <div class="breadcrumb">
+              <a onclick="showPage('homePage')">Home</a> >
+              <a onclick="goBackToPlayer()">Player Details</a> > Conversation Details
+            </div>
+            <button class="back-btn" onclick="goBackToPlayer()">← Back</button>
+            <h1>Conversation Details</h1>
+          </div>
+          <div id="conversationDetailContent" class="detail-content">
+            <!-- Conversation detail content will be populated here -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // 全局数据和状态
+      let appData = null;
+      let currentPlayerId = null;
+
+      // 格式化时间
+      function formatTime(timestamp) {
+        return new Date(timestamp).toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        });
+      }
+
+      // 显示指定页面
+      function showPage(pageId) {
+        document.querySelectorAll('.page').forEach((page) => page.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+      }
+
+      // 返回到player详情页
+      function goBackToPlayer() {
+        if (currentPlayerId) {
+          showPlayerDetail(currentPlayerId);
+        } else {
+          showPage('homePage');
+        }
+      }
+
+      // Load JSON data - from file upload
+      function loadDataFromFile(file) {
+        const uploadStatus = document.getElementById('uploadStatus');
+        uploadStatus.className = 'upload-status loading';
+        uploadStatus.textContent = 'Loading data...';
+
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            appData = JSON.parse(e.target.result);
+
+            // Validate data format
+            if (!appData.playerDescriptions || !appData.memories || !appData.messages) {
+              throw new Error('Invalid JSON file format');
+            }
+
+            uploadStatus.className = 'upload-status success';
+            uploadStatus.textContent = 'Data loaded successfully!';
+
+            initializeApp();
+          } catch (error) {
+            uploadStatus.className = 'upload-status error';
+            uploadStatus.textContent = 'Data loading failed: ' + error.message;
+          }
+        };
+
+        reader.onerror = function () {
+          uploadStatus.className = 'upload-status error';
+          uploadStatus.textContent = 'File reading failed';
+        };
+
+        reader.readAsText(file);
+      }
+
+      // Handle file selection
+      function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+          if (file.type === 'application/json' || file.name.endsWith('.json')) {
+            loadDataFromFile(file);
+          } else {
+            const uploadStatus = document.getElementById('uploadStatus');
+            uploadStatus.className = 'upload-status error';
+            uploadStatus.textContent = 'Please select a JSON file';
+          }
+        }
+      }
+
+      // Handle drag and drop upload
+      function handleDragOver(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        document.getElementById('uploadArea').classList.add('dragover');
+      }
+
+      function handleDragLeave(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        document.getElementById('uploadArea').classList.remove('dragover');
+      }
+
+      function handleDrop(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        document.getElementById('uploadArea').classList.remove('dragover');
+
+        const files = event.dataTransfer.files;
+        if (files.length > 0) {
+          const file = files[0];
+          if (file.type === 'application/json' || file.name.endsWith('.json')) {
+            loadDataFromFile(file);
+          } else {
+            const uploadStatus = document.getElementById('uploadStatus');
+            uploadStatus.className = 'upload-status error';
+            uploadStatus.textContent = 'Please select a JSON file';
+          }
+        }
+      }
+
+      // Initialize application
+      function initializeApp() {
+        populatePlayerList();
+        populateDataSummary();
+
+        // Show data summary area
+        document.getElementById('dataSummaryContainer').style.display = 'block';
+      }
+
+      // Populate player list
+      function populatePlayerList() {
+        const playerList = document.getElementById('playerList');
+
+        if (!appData || !appData.playerDescriptions) {
+          playerList.innerHTML =
+            '<div style="text-align: center; color: rgba(255,255,255,0.7); padding: 20px;">Please upload data file first</div>';
+          return;
+        }
+
+        playerList.innerHTML = '';
+
+        appData.playerDescriptions.forEach((player) => {
+          const playerTab = document.createElement('div');
+          playerTab.className = 'player-tab';
+          playerTab.onclick = () => showPlayerDetail(player.playerId);
+
+          playerTab.innerHTML = `
+                    <div class="player-name">${player.name}</div>
+                    <div class="player-character">${player.character}</div>
+                `;
+
+          playerList.appendChild(playerTab);
+        });
+      }
+
+      // Populate data summary
+      function populateDataSummary() {
+        const dataSummary = document.getElementById('dataSummary');
+        dataSummary.innerHTML = `
+                <li>Players: ${appData.playerDescriptions.length}</li>
+                <li>Memories: ${appData.metadata.counts.memories}</li>
+                <li>Messages: ${appData.metadata.counts.messages}</li>
+            `;
+      }
+
+      // Show player details
+      function showPlayerDetail(playerId) {
+        currentPlayerId = playerId;
+        const player = appData.playerDescriptions.find((p) => p.playerId === playerId);
+        if (!player) {
+          alert('Player not found');
+          return;
+        }
+
+        // 更新侧边栏活跃状态
+        document.querySelectorAll('.player-tab').forEach((tab) => tab.classList.remove('active'));
+        const playerTabs = document.querySelectorAll('.player-tab');
+        const playerIndex = appData.playerDescriptions.findIndex((p) => p.playerId === playerId);
+        if (playerTabs[playerIndex]) {
+          playerTabs[playerIndex].classList.add('active');
+        }
+
+        const playerMemories = appData.memories.filter((m) => m.playerId === playerId);
+        const reflections = playerMemories.filter((m) => m.data.type === 'reflection');
+        const conversations = playerMemories.filter((m) => m.data.type === 'conversation');
+
+        const content = document.getElementById('playerDetailContent');
+        content.innerHTML = `
+                <div class="player-header">
+                    <h1>${player.name}</h1>
+                    <p class="player-description">${player.description}</p>
+                </div>
+
+                <div class="memory-sections">
+                    <div class="memory-section">
+                        <h2>Reflections (${reflections.length})</h2>
+                        <div class="memory-list">
+                            ${reflections
+                              .map(
+                                (reflection) => `
+                                <div class="memory-item" onclick="showReflectionDetail('${reflection._id}')">
+                                    <div class="memory-header">
+                                        <span class="memory-time">${formatTime(reflection._creationTime)}</span>
+                                        <span class="memory-importance">Importance: ${reflection.importance}</span>
+                                    </div>
+                                    <div class="memory-description">
+                                        ${reflection.description.substring(0, 200)}...
+                                    </div>
+                                </div>
+                            `,
+                              )
+                              .join('')}
+                        </div>
+                    </div>
+
+                    <div class="memory-section">
+                        <h2>Conversations (${conversations.length})</h2>
+                        <div class="memory-list">
+                            ${conversations
+                              .map(
+                                (conversation) => `
+                                <div class="memory-item" onclick="showConversationDetail('${conversation._id}')">
+                                    <div class="memory-header">
+                                        <span class="memory-time">${formatTime(conversation._creationTime)}</span>
+                                        <span class="memory-importance">Importance: ${conversation.importance}</span>
+                                    </div>
+                                    <div class="memory-description">
+                                        ${conversation.description.substring(0, 200)}...
+                                    </div>
+                                </div>
+                            `,
+                              )
+                              .join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+        showPage('playerDetailPage');
+      }
+
+      // Show reflection details
+      function showReflectionDetail(reflectionId) {
+        const reflection = appData.memories.find((m) => m._id === reflectionId);
+        if (!reflection || reflection.data.type !== 'reflection') {
+          alert('Reflection not found');
+          return;
+        }
+
+        const relatedConversations = reflection.data.relatedMemoryIds
+          ? appData.memories.filter(
+              (m) =>
+                reflection.data.relatedMemoryIds.includes(m._id) && m.data.type === 'conversation',
+            )
+          : [];
+
+        const content = document.getElementById('reflectionDetailContent');
+        content.innerHTML = `
+                <div class="detail-info">
+                    <div class="info-row">
+                        <label>Time:</label>
+                        <span>${formatTime(reflection._creationTime)}</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Importance:</label>
+                        <span>${reflection.importance}</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Last Access:</label>
+                        <span>${formatTime(reflection.lastAccess)}</span>
+                    </div>
+                </div>
+                
+                <div class="description-section">
+                    <h3>Description</h3>
+                    <p class="description-text">${reflection.description}</p>
+                </div>
+
+                ${
+                  relatedConversations.length > 0
+                    ? `
+                    <div class="related-conversations">
+                        <h3>Related Conversations (${relatedConversations.length})</h3>
+                        <div class="conversation-list">
+                            ${relatedConversations
+                              .map(
+                                (conv) => `
+                                <div class="conversation-item" onclick="showConversationDetail('${conv._id}')">
+                                    <div class="conversation-time">${formatTime(conv._creationTime)}</div>
+                                    <div class="conversation-preview">
+                                        ${conv.description.substring(0, 150)}...
+                                    </div>
+                                </div>
+                            `,
+                              )
+                              .join('')}
+                        </div>
+                    </div>
+                `
+                    : ''
+                }
+            `;
+
+        showPage('reflectionDetailPage');
+      }
+
+      // Show conversation details
+      function showConversationDetail(conversationId) {
+        const conversation = appData.memories.find((m) => m._id === conversationId);
+        if (!conversation || conversation.data.type !== 'conversation') {
+          alert('Conversation not found');
+          return;
+        }
+
+        const messages = appData.messages
+          .filter((m) => m.conversationId === conversation.data.conversationId)
+          .sort((a, b) => a._creationTime - b._creationTime);
+
+        const content = document.getElementById('conversationDetailContent');
+        content.innerHTML = `
+                <div class="detail-info">
+                    <div class="info-row">
+                        <label>Time:</label>
+                        <span>${formatTime(conversation._creationTime)}</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Importance:</label>
+                        <span>${conversation.importance}</span>
+                    </div>
+                    <div class="info-row">
+                        <label>Conversation ID:</label>
+                        <span>${conversation.data.conversationId}</span>
+                    </div>
+                </div>
+                
+                <div class="description-section">
+                    <h3>Description</h3>
+                    <p class="description-text">${conversation.description}</p>
+                </div>
+
+                ${
+                  messages.length > 0
+                    ? `
+                    <div class="messages-section">
+                        <h3>Messages (${messages.length})</h3>
+                        <div class="messages-list">
+                            ${messages
+                              .map(
+                                (message) => `
+                                <div class="message-item">
+                                    <div class="message-header">
+                                        <span class="message-author">${message.authorName}</span>
+                                        <span class="message-time">${formatTime(message._creationTime)}</span>
+                                    </div>
+                                    <div class="message-text">${message.text}</div>
+                                </div>
+                            `,
+                              )
+                              .join('')}
+                        </div>
+                    </div>
+                `
+                    : ''
+                }
+            `;
+
+        showPage('conversationDetailPage');
+      }
+
+      // Page initialization after loading
+      document.addEventListener('DOMContentLoaded', function () {
+        // Initialize sidebar (show prompt message)
+        populatePlayerList();
+
+        // Add file selection event listener
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+
+        // Add drag and drop event listeners
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        uploadArea.addEventListener('click', () => document.getElementById('fileInput').click());
+      });
+    </script>
+  </body>
+</html>

@@ -170,7 +170,7 @@ export async function searchMemories(
     candidates,
     n,
   });
-  return rankedMemories.map(({ memory }) => memory);
+  return rankedMemories.map(({ memory }: { memory: Memory }) => memory);
 }
 
 function makeRange(values: number[]) {
@@ -248,7 +248,7 @@ async function calculateImportance(description: string) {
     messages: [
       {
         role: 'user',
-        content: `On the scale of 0 to 9, where 0 is purely mundane (e.g., brushing teeth, making bed) and 9 is extremely poignant (e.g., a break up, college acceptance), rate the likely poignancy of the following piece of memory.
+        content: `On a scale from 0 to 9, where 0 means the memory offers no value to philosophical reflection, and 9 means it is profoundly insightful or transformative for personal philosophical understanding, rate the potential of the following memory to contribute to your own philosophical thinking.
       Memory: ${description}
       Answer on a scale of 0 to 9. Respond with number only, e.g. "5"`,
       },
@@ -332,15 +332,15 @@ async function reflectOnMemories(
     {
       worldId,
       playerId,
-      numberOfItems: 100,
+      numberOfItems: 50,
     },
   );
 
-  // should only reflect if lastest 100 items have importance score of >500
+  // should only reflect if lastest 50 items have importance score of >250
   const sumOfImportanceScore = memories
-    .filter((m) => m._creationTime > (lastReflectionTs ?? 0))
-    .reduce((acc, curr) => acc + curr.importance, 0);
-  const shouldReflect = sumOfImportanceScore > 500;
+    .filter((m: Memory) => m._creationTime > (lastReflectionTs ?? 0))
+    .reduce((acc: number, curr: Memory) => acc + curr.importance, 0);
+  const shouldReflect = sumOfImportanceScore > 250;
 
   if (!shouldReflect) {
     return false;
@@ -348,10 +348,10 @@ async function reflectOnMemories(
   console.debug('sum of importance score = ', sumOfImportanceScore);
   console.debug('Reflecting...');
   const prompt = ['[no prose]', '[Output only JSON]', `You are ${name}, statements about you:`];
-  memories.forEach((m, idx) => {
+  memories.forEach((m: Memory, idx: number) => {
     prompt.push(`Statement ${idx}: ${m.description}`);
   });
-  prompt.push('What 3 high-level insights can you infer from the above statements?');
+  prompt.push('What 3 insights(each in 200 words) can you infer from the above statements?');
   prompt.push(
     'Return in JSON format, where the key is a list of input statements that contributed to your insights and value is your insight. Make the response parseable by Typescript JSON.parse() function. DO NOT escape characters or include "\n" or white space in response.',
   );

@@ -232,9 +232,64 @@ npx convex env set TOGETHER_API_KEY 'your-key'
 Optional: choose models via `TOGETHER_CHAT_MODEL`, `TOGETHER_EMBEDDING_MODEL`. The embedding model's
 dimension must match `EMBEDDING_DIMENSION`.
 
+### Azure OpenAI
+
+To use Azure OpenAI, you need to:
+
+**Prerequisites:**
+1. An Azure subscription
+2. An Azure OpenAI resource with deployed models
+3. API keys and endpoint information
+
+**Required Setup:**
+
+First, update the embedding dimension in `convex/util/llm.ts`:
+
+```ts
+// In convex/util/llm.ts change the following line:
+export const EMBEDDING_DIMENSION = AZURE_OPENAI_EMBEDDING_DIMENSION;
+```
+
+Then set the required environment variables. Visit [Azure OpenAI Studio](https://oai.azure.com/) to get your API key and endpoint:
+
+```sh
+# Set the provider to azure-openai
+npx convex env set LLM_PROVIDER "azure-openai"
+
+# Azure OpenAI API key
+npx convex env set AZURE_OPENAI_API_KEY "your-azure-openai-api-key"
+
+# Azure OpenAI endpoint (without trailing slash)
+npx convex env set AZURE_OPENAI_ENDPOINT "https://your-resource-name.openai.azure.com"
+```
+
+**Optional Configuration:**
+
+```sh
+# API version (defaults to 2025-01-01-preview)
+npx convex env set AZURE_OPENAI_API_VERSION "2025-01-01-preview"
+
+# Chat model deployment name (defaults to gpt-4o-mini)
+npx convex env set AZURE_OPENAI_CHAT_DEPLOYMENT "your-chat-deployment-name"
+
+# Embedding model deployment name (defaults to text-embedding-3-small)
+npx convex env set AZURE_OPENAI_EMBEDDING_DEPLOYMENT "your-embedding-deployment-name"
+
+# Embedding API version (defaults to 2023-05-15)
+npx convex env set AZURE_OPENAI_EMBEDDING_API_VERSION "2023-05-15"
+```
+
+**Model Deployments:**
+
+Make sure you have deployed the following models in your Azure OpenAI resource:
+1. **Chat Model**: GPT-4o-mini or other chat model
+2. **Embedding Model**: text-embedding-3-small or similar
+
+The deployment names should match the values in your environment variables.
+
 ### Other OpenAI-compatible API
 
-You can use any OpenAI-compatible API, such as Anthropic, Groq, or Azure.
+You can use any other OpenAI-compatible API, such as Anthropic, Groq, or other cloud providers.
 
 - Change the `EMBEDDING_DIMENSION` in `convex/util/llm.ts` to match the dimension of your embedding
   model.
@@ -365,6 +420,52 @@ npx convex run init
 You can go to the [dashboard](https://dashboard.convex.dev) to your deployment settings to pause and
 un-pause your deployment. This will stop all functions, whether invoked from the client, scheduled,
 or as a cron job. See this as a last resort, as there are gentler ways of stopping above.
+
+## Data Export
+
+You can export specific table data from your AI Town world for analysis or backup purposes.
+
+**To export specific tables data**
+
+```bash
+# Export playerDescriptions, memories, and messages tables as JSON
+npm run export-data
+```
+
+**Output Files**
+
+The export creates a single JSON file containing all three tables:
+- File name format: `ai-town-specific-export-{worldId}-{timestamp}.json`
+- Data structure:
+  ```json
+  {
+    "metadata": {
+      "worldId": "...",
+      "exportedAt": "...",
+      "format": "json",
+      "tables": ["playerDescriptions", "memories", "messages"],
+      "counts": {
+        "playerDescriptions": 5,
+        "memories": 120,
+        "messages": 300
+      }
+    },
+    "playerDescriptions": [...],
+    "memories": [...],
+    "messages": [...]
+  }
+  ```
+
+**Data Enhancements**
+
+- **messages table**: If playerDescriptions are also exported, message data will automatically include author names (authorName field)
+- **All tables**: Formatted creation timestamps are added (createdAt field)
+
+**Prerequisites**
+
+1. Ensure Convex development server is running
+2. Properly set `VITE_CONVEX_URL` in your `.env.local` file
+3. Have database access permissions
 
 ## Windows Installation
 

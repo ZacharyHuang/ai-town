@@ -1,17 +1,18 @@
 // That's right! No imports and no dependencies 🤯
 
 const OPENAI_EMBEDDING_DIMENSION = 1536;
+const AZURE_OPENAI_EMBEDDING_DIMENSION = 1536;
 const TOGETHER_EMBEDDING_DIMENSION = 768;
 const OLLAMA_EMBEDDING_DIMENSION = 1024;
 
-export const EMBEDDING_DIMENSION: number = OLLAMA_EMBEDDING_DIMENSION;
+export const EMBEDDING_DIMENSION: number = AZURE_OPENAI_EMBEDDING_DIMENSION;
 
 export function detectMismatchedLLMProvider() {
   switch (EMBEDDING_DIMENSION) {
     case OPENAI_EMBEDDING_DIMENSION:
-      if (!process.env.OPENAI_API_KEY) {
+      if (!process.env.OPENAI_API_KEY && !process.env.AZURE_OPENAI_API_KEY) {
         throw new Error(
-          "Are you trying to use OpenAI? If so, run: npx convex env set OPENAI_API_KEY 'your-key'",
+          "Are you trying to use OpenAI or Azure OpenAI? If so, run: npx convex env set OPENAI_API_KEY 'your-key'",
         );
       }
       break;
@@ -35,16 +36,47 @@ export function detectMismatchedLLMProvider() {
 }
 
 export interface LLMConfig {
-  provider: 'openai' | 'together' | 'ollama' | 'custom';
+  provider: 'openai' | 'azure-openai' | 'together' | 'ollama' | 'custom';
   url: string; // Should not have a trailing slash
   chatModel: string;
   embeddingModel: string;
   stopWords: string[];
   apiKey: string | undefined;
+  apiVersion?: string; // For Azure OpenAI
+  deploymentName?: string; // For Azure OpenAI chat deployment
+  embeddingDeploymentName?: string; // For Azure OpenAI embedding deployment
+  embeddingApiVersion?: string; // For Azure OpenAI embedding API version
 }
 
 export function getLLMConfig(): LLMConfig {
   let provider = process.env.LLM_PROVIDER;
+
+  // Azure OpenAI configuration
+  if (provider ? provider === 'azure-openai' : process.env.AZURE_OPENAI_API_KEY) {
+    if (EMBEDDING_DIMENSION !== AZURE_OPENAI_EMBEDDING_DIMENSION) {
+      throw new Error('EMBEDDING_DIMENSION must be 1536 for Azure OpenAI');
+    }
+    const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
+    if (!endpoint) {
+      throw new Error('AZURE_OPENAI_ENDPOINT is required for Azure OpenAI');
+    }
+    // Remove trailing slash if present
+    const url = endpoint.replace(/\/$/, '');
+    return {
+      provider: 'azure-openai',
+      url,
+      chatModel: process.env.AZURE_OPENAI_CHAT_DEPLOYMENT ?? 'gpt-4o-mini',
+      embeddingModel: process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT ?? 'text-embedding-3-small',
+      stopWords: [],
+      apiKey: process.env.AZURE_OPENAI_API_KEY,
+      apiVersion: process.env.AZURE_OPENAI_API_VERSION ?? '2025-01-01-preview',
+      deploymentName: process.env.AZURE_OPENAI_CHAT_DEPLOYMENT ?? 'gpt-4o-mini',
+      embeddingDeploymentName:
+        process.env.AZURE_OPENAI_EMBEDDING_DEPLOYMENT ?? 'text-embedding-3-small',
+      embeddingApiVersion: process.env.AZURE_OPENAI_EMBEDDING_API_VERSION ?? '2023-05-15',
+    };
+  }
+
   if (provider ? provider === 'openai' : process.env.OPENAI_API_KEY) {
     if (EMBEDDING_DIMENSION !== OPENAI_EMBEDDING_DIMENSION) {
       throw new Error('EMBEDDING_DIMENSION must be 1536 for OpenAI');
@@ -109,12 +141,21 @@ export function getLLMConfig(): LLMConfig {
   };
 }
 
-const AuthHeaders = (): Record<string, string> =>
-  getLLMConfig().apiKey
+const AuthHeaders = (): Record<string, string> => {
+  const config = getLLMConfig();
+  if (config.provider === 'azure-openai') {
+    return config.apiKey
+      ? {
+          'api-key': config.apiKey,
+        }
+      : {};
+  }
+  return config.apiKey
     ? {
-        Authorization: 'Bearer ' + getLLMConfig().apiKey,
+        Authorization: 'Bearer ' + config.apiKey,
       }
     : {};
+};
 
 // Overload for non-streaming
 export async function chatCompletion(
@@ -142,12 +183,22 @@ export async function chatCompletion(
   const stopWords = body.stop ? (typeof body.stop === 'string' ? [body.stop] : body.stop) : [];
   if (config.stopWords) stopWords.push(...config.stopWords);
   console.log(body);
+
+  // Build URL based on provider
+  let url: string;
+  if (config.provider === 'azure-openai') {
+    const deploymentName = config.deploymentName || body.model;
+    url = `${config.url}/openai/deployments/${deploymentName}/chat/completions?api-version=${config.apiVersion}`;
+  } else {
+    url = config.url + '/v1/chat/completions';
+  }
+
   const {
     result: content,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    const result = await fetch(config.url + '/v1/chat/completions', {
+    const result = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -212,12 +263,22 @@ export async function fetchEmbeddingBatch(texts: string[]) {
       ),
     };
   }
+
+  // Build URL based on provider
+  let url: string;
+  if (config.provider === 'azure-openai') {
+    const embeddingDeploymentName = config.embeddingDeploymentName || config.embeddingModel;
+    url = `${config.url}/openai/deployments/${embeddingDeploymentName}/embeddings?api-version=${config.embeddingApiVersion}`;
+  } else {
+    url = config.url + '/v1/embeddings';
+  }
+
   const {
     result: json,
     retries,
     ms,
   } = await retryWithBackoff(async () => {
-    const result = await fetch(config.url + '/v1/embeddings', {
+    const result = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -258,8 +319,19 @@ export async function fetchEmbedding(text: string) {
 }
 
 export async function fetchModeration(content: string) {
+  const config = getLLMConfig();
+
+  // Build URL based on provider
+  let url: string;
+  if (config.provider === 'azure-openai') {
+    // Azure OpenAI moderation endpoint format
+    url = `${config.url}/openai/moderations?api-version=${config.apiVersion}`;
+  } else {
+    url = config.url + '/v1/moderations';
+  }
+
   const { result: flagged } = await retryWithBackoff(async () => {
-    const result = await fetch(getLLMConfig().url + '/v1/moderations', {
+    const result = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
